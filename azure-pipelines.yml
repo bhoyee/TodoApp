@@ -1,0 +1,81 @@
+trigger:
+  branches:
+    include:
+      - main
+
+parameters:
+  - name: deployToAzure
+    displayName: Deploy to Azure App Service
+    type: boolean
+    default: false
+
+variables:
+  buildConfiguration: Release
+  azureServiceConnection: YOUR-AZURE-SERVICE-CONNECTION
+  webAppName: YOUR-AZURE-WEB-APP-NAME
+
+stages:
+  - stage: Build
+    displayName: Build
+    jobs:
+      - job: Build
+        displayName: Build and publish artifact
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - task: UseDotNet@2
+            displayName: Install .NET SDK
+            inputs:
+              packageType: sdk
+              version: 10.0.x
+
+          - task: DotNetCoreCLI@2
+            displayName: Restore packages
+            inputs:
+              command: restore
+              projects: TodoApp.csproj
+
+          - task: DotNetCoreCLI@2
+            displayName: Build app
+            inputs:
+              command: build
+              projects: TodoApp.csproj
+              arguments: --configuration $(buildConfiguration) --no-restore
+
+          - task: DotNetCoreCLI@2
+            displayName: Publish app
+            inputs:
+              command: publish
+              publishWebProjects: false
+              projects: TodoApp.csproj
+              arguments: --configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)
+              zipAfterPublish: true
+
+          - publish: $(Build.ArtifactStagingDirectory)
+            displayName: Publish build artifact
+            artifact: drop
+
+  - stage: Deploy
+    displayName: Deploy
+    dependsOn: Build
+    condition: and(succeeded(), eq(${{ parameters.deployToAzure }}, true))
+    jobs:
+      - deployment: DeployWebApp
+        displayName: Deploy to Azure App Service
+        environment: production
+        pool:
+          vmImage: ubuntu-latest
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: drop
+
+                - task: AzureWebApp@1
+                  displayName: Deploy package
+                  inputs:
+                    azureSubscription: $(azureServiceConnection)
+                    appType: webAppLinux
+                    appName: $(webAppName)
+                    package: $(Pipeline.Workspace)/drop/*.zip

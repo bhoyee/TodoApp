@@ -1,0 +1,34 @@
+@TodoApp_HostAddress = http://localhost:5148
+
+GET {{TodoApp_HostAddress}}/todos
+Accept: application/json
+
+###
+
+GET {{TodoApp_HostAddress}}/todos/1
+Accept: application/json
+
+###
+
+POST {{TodoApp_HostAddress}}/todos
+Content-Type: application/json
+
+{
+  "title": "Learn Azure DevOps pipelines"
+}
+
+###
+
+PUT {{TodoApp_HostAddress}}/todos/1
+Content-Type: application/json
+
+{
+  "title": "Create my first todo API",
+  "isCompleted": true
+}
+
+###
+
+DELETE {{TodoApp_HostAddress}}/todos/1
+
+###
