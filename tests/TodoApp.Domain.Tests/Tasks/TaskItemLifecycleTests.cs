@@ -35,7 +35,10 @@ public sealed class TaskItemLifecycleTests
     [Fact]
     public void Create_WhenTitleIsValid_CreatesBacklogTask()
     {
-        var task = TaskItem.Create(TaskId, "Prepare release notes");
+        var task = TaskItem.Create(
+            TaskId,
+            ProjectId,
+            "Prepare release notes");
 
         Assert.Equal(TaskId, task.Id);
         Assert.Equal("Prepare release notes", task.Title);
@@ -50,7 +53,7 @@ public sealed class TaskItemLifecycleTests
     public void Create_WhenTitleIsBlank_ThrowsDomainValidationException(string title)
     {
         var exception = Assert.Throws<DomainValidationException>(
-            () => TaskItem.Create(TaskId, title));
+            () => TaskItem.Create(TaskId, ProjectId, title));
 
         Assert.Equal("Task title is required.", exception.Message);
     }
@@ -144,7 +147,7 @@ public sealed class TaskItemLifecycleTests
     }
 
     private static TaskItem CreateTask() =>
-        TaskItem.Create(TaskId, "Prepare release notes");
+        TaskItem.Create(TaskId, ProjectId, "Prepare release notes");
 
     private static TaskItem CreateReadyTask()
     {
