@@ -6,6 +6,31 @@ namespace TodoApp.Domain.Tests.Tasks;
 public sealed class TaskItemLifecycleTests
 {
     private static readonly Guid TaskId = Guid.Parse("6fc11d29-d884-4dd6-ab06-4f205dcae65d");
+    private static readonly Guid ProjectId =
+        Guid.Parse("f3f9015e-ef48-48f3-a330-49a68332c3b8");
+
+    [Fact]
+    public void Create_WhenProjectIdentifierIsValid_RecordsProjectOwnership()
+    {
+        var task = TaskItem.Create(
+            TaskId,
+            ProjectId,
+            "Prepare release notes");
+
+        Assert.Equal(ProjectId, task.ProjectId);
+    }
+
+    [Fact]
+    public void Create_WhenProjectIdentifierIsEmpty_ThrowsDomainValidationException()
+    {
+        var exception = Assert.Throws<DomainValidationException>(
+            () => TaskItem.Create(
+                TaskId,
+                Guid.Empty,
+                "Prepare release notes"));
+
+        Assert.Equal("Project identifier is required.", exception.Message);
+    }
 
     [Fact]
     public void Create_WhenTitleIsValid_CreatesBacklogTask()
