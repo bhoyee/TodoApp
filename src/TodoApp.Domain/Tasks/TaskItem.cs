@@ -5,6 +5,8 @@ namespace TodoApp.Domain.Tasks;
 public sealed class TaskItem
 {
     private readonly List<TaskItem> _dependencies = [];
+    private PlanningFactors? _planningFactors;
+    private PriorityScore? _priority;
 
     private TaskItem(Guid id, string title)
     {
@@ -32,6 +34,14 @@ public sealed class TaskItem
     public string? BlockedReason { get; private set; }
 
     public DateTimeOffset? CompletedAt { get; private set; }
+
+    public PlanningFactors PlanningFactors =>
+        _planningFactors ??
+        throw new DomainRuleException("Task planning factors have not been set.");
+
+    public PriorityScore Priority =>
+        _priority ??
+        throw new DomainRuleException("Task planning factors have not been set.");
 
     public IReadOnlyCollection<Guid> DependencyIds =>
         _dependencies.Select(dependency => dependency.Id).ToArray();
@@ -99,6 +109,12 @@ public sealed class TaskItem
         }
 
         _dependencies.Remove(dependency);
+    }
+
+    public void SetPlanningFactors(PlanningFactors factors)
+    {
+        _planningFactors = factors;
+        _priority = PriorityScore.Calculate(factors);
     }
 
     public void Block(string reason)
