@@ -54,8 +54,8 @@ introduced incrementally when their milestone begins.
 
 ## Current Development
 
-Milestone 1 is complete on `feature/domain-foundation`. The domain layer
-includes:
+Milestone 1 is complete and Milestone 2 is in progress on the stacked
+`feature/application-use-cases` branch. The current solution includes:
 
 - A guarded task lifecycle from Backlog to Completed.
 - Blocking, unblocking, and reopening rules.
@@ -65,7 +65,9 @@ includes:
 - Project creation, editing, target dates, and archive restrictions.
 - Due-date and Fibonacci effort-estimate value objects.
 - Domain events for task lifecycle changes.
-- 60 xUnit domain tests.
+- Create, start, complete, and dependency application commands.
+- Task detail and filtered paginated search queries.
+- 62 domain tests and 16 application tests.
 
 Run the complete build and test suite with:
 
