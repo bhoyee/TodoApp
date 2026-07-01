@@ -1,8 +1,22 @@
 # TodoApp
 
-A simple ASP.NET Core minimal API todo project built with C# and .NET.
+A priority-intelligence task management application built with C# and .NET.
+The current code is a minimal API prototype; the planned product will help
+users rank work using value, urgency, risk, effort, and task dependencies.
 
-## What The App Does
+## Project Documentation
+
+- [Product roadmap](docs/ROADMAP.md)
+- [Product requirements](docs/REQUIREMENTS.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Testing strategy](docs/TESTING.md)
+- [Contribution workflow](docs/CONTRIBUTING.md)
+
+Development follows incremental delivery, TDD for core behaviour, and a
+modular monolith architecture. Milestone 0 establishes the planning baseline;
+Milestone 1 introduces the first domain model and tests.
+
+## Current Prototype
 
 - `GET /todos` returns all todo items.
 - `GET /todos/{id}` returns one todo item.
