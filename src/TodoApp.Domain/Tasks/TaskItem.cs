@@ -4,6 +4,8 @@ namespace TodoApp.Domain.Tasks;
 
 public sealed class TaskItem
 {
+    private readonly List<TaskItem> _dependencies = [];
+
     private TaskItem(Guid id, string title)
     {
         if (id == Guid.Empty)
@@ -31,6 +33,15 @@ public sealed class TaskItem
 
     public DateTimeOffset? CompletedAt { get; private set; }
 
+    public IReadOnlyCollection<Guid> DependencyIds =>
+        _dependencies.Select(dependency => dependency.Id).ToArray();
+
+    public bool HasIncompleteDependencies =>
+        _dependencies.Any(dependency => dependency.Status != TaskItemStatus.Completed);
+
+    public bool IsBlocked =>
+        Status == TaskItemStatus.Blocked || HasIncompleteDependencies;
+
     public static TaskItem Create(Guid id, string title) => new(id, title);
 
     public void MoveToReady()
@@ -48,7 +59,46 @@ public sealed class TaskItem
             TaskItemStatus.Ready,
             "Only a ready task can be started.");
 
+        if (HasIncompleteDependencies)
+        {
+            throw new DomainRuleException(
+                "Task cannot start until all dependencies are completed.");
+        }
+
         Status = TaskItemStatus.InProgress;
+    }
+
+    public void AddDependency(TaskItem dependency)
+    {
+        if (dependency.Id == Id)
+        {
+            throw new DomainRuleException("A task cannot depend on itself.");
+        }
+
+        if (_dependencies.Any(existing => existing.Id == dependency.Id))
+        {
+            throw new DomainRuleException("The task dependency already exists.");
+        }
+
+        if (dependency.DependsOn(Id, []))
+        {
+            throw new DomainRuleException(
+                "A circular task dependency is not allowed.");
+        }
+
+        _dependencies.Add(dependency);
+    }
+
+    public void RemoveDependency(Guid dependencyId)
+    {
+        var dependency = _dependencies.Find(item => item.Id == dependencyId);
+
+        if (dependency is null)
+        {
+            throw new DomainRuleException("The task dependency does not exist.");
+        }
+
+        _dependencies.Remove(dependency);
     }
 
     public void Block(string reason)
@@ -102,5 +152,20 @@ public sealed class TaskItem
         {
             throw new DomainRuleException(message);
         }
+    }
+
+    private bool DependsOn(Guid taskId, HashSet<Guid> visited)
+    {
+        if (Id == taskId)
+        {
+            return true;
+        }
+
+        if (!visited.Add(Id))
+        {
+            return false;
+        }
+
+        return _dependencies.Any(dependency => dependency.DependsOn(taskId, visited));
     }
 }
