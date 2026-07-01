@@ -35,6 +35,10 @@ public sealed class TaskItem
 
     public DateTimeOffset? CompletedAt { get; private set; }
 
+    public DueDate? DueDate { get; private set; }
+
+    public EffortEstimate? EffortEstimate { get; private set; }
+
     public PlanningFactors PlanningFactors =>
         _planningFactors ??
         throw new DomainRuleException("Task planning factors have not been set.");
@@ -115,6 +119,16 @@ public sealed class TaskItem
     {
         _planningFactors = factors;
         _priority = PriorityScore.Calculate(factors);
+    }
+
+    public void Schedule(DueDate dueDate)
+    {
+        DueDate = dueDate;
+    }
+
+    public void Estimate(EffortEstimate effortEstimate)
+    {
+        EffortEstimate = effortEstimate;
     }
 
     public void Block(string reason)

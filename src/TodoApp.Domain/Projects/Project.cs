@@ -1,4 +1,5 @@
 using TodoApp.Domain.Common;
+using TodoApp.Domain.Tasks;
 
 namespace TodoApp.Domain.Projects;
 
@@ -27,6 +28,8 @@ public sealed class Project
 
     public DateTimeOffset? ArchivedAt { get; private set; }
 
+    public DueDate? TargetDate { get; private set; }
+
     public static Project Create(
         Guid id,
         string name,
@@ -49,6 +52,12 @@ public sealed class Project
     {
         EnsureActive();
         ArchivedAt = archivedAt;
+    }
+
+    public void SetTargetDate(DueDate targetDate)
+    {
+        EnsureActive();
+        TargetDate = targetDate;
     }
 
     public void EnsureCanAcceptTasks()
