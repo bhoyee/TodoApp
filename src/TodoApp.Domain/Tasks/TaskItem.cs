@@ -58,6 +58,8 @@ public sealed class TaskItem
         _priority ??
         throw new DomainRuleException("Task planning factors have not been set.");
 
+    public bool HasPlanningFactors => _planningFactors is not null;
+
     public IReadOnlyCollection<Guid> DependencyIds =>
         _dependencies.Select(dependency => dependency.Id).ToArray();
 
