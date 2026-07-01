@@ -122,6 +122,12 @@ public sealed class CreateTaskHandlerTests
 
         public CancellationToken ReceivedCancellationToken { get; private set; }
 
+        public Task<TaskItem?> GetByIdAsync(
+            Guid taskId,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(
+                AddedTask?.Id == taskId ? AddedTask : null);
+
         public Task AddAsync(
             TaskItem task,
             CancellationToken cancellationToken)
