@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using TodoApp.Application.Abstractions;
 using TodoApp.Domain.Projects;
 using TodoApp.Domain.Tasks;
+using TodoApp.Domain.Tasks.Events;
 
 namespace TodoApp.Infrastructure.Persistence;
 
@@ -13,6 +14,8 @@ public sealed class TodoAppDbContext(
 
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
 
+    public DbSet<TaskActivity> TaskActivities => Set<TaskActivity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(
@@ -23,5 +26,40 @@ public sealed class TodoAppDbContext(
         CancellationToken cancellationToken)
     {
         await SaveChangesAsync(cancellationToken);
+    }
+
+    public override async Task<int> SaveChangesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var tasksWithEvents = ChangeTracker
+            .Entries<TaskItem>()
+            .Select(entry => entry.Entity)
+            .Where(task => task.DomainEvents.Count > 0)
+            .ToArray();
+
+        foreach (var task in tasksWithEvents)
+        {
+            foreach (var domainEvent in task.DomainEvents)
+            {
+                if (domainEvent is TaskStatusChangedDomainEvent statusChanged)
+                {
+                    TaskActivities.Add(
+                        TaskActivity.StatusChanged(
+                            statusChanged.TaskId,
+                            statusChanged.PreviousStatus.ToString(),
+                            statusChanged.CurrentStatus.ToString(),
+                            DateTimeOffset.UtcNow));
+                }
+            }
+        }
+
+        var result = await base.SaveChangesAsync(cancellationToken);
+
+        foreach (var task in tasksWithEvents)
+        {
+            task.ClearDomainEvents();
+        }
+
+        return result;
     }
 }

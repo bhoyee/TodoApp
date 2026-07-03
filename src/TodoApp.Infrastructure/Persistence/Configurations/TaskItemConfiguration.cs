@@ -83,6 +83,29 @@ internal sealed class TaskItemConfiguration
         builder.HasIndex(task => new { task.ProjectId, task.Status });
         builder.HasIndex(task => task.DueDate);
 
+        builder.HasMany<TaskItem>("_dependencies")
+            .WithMany()
+            .UsingEntity<Dictionary<string, object>>(
+                "TaskDependencies",
+                right => right
+                    .HasOne<TaskItem>()
+                    .WithMany()
+                    .HasForeignKey("DependencyId")
+                    .OnDelete(DeleteBehavior.Restrict),
+                left => left
+                    .HasOne<TaskItem>()
+                    .WithMany()
+                    .HasForeignKey("TaskId")
+                    .OnDelete(DeleteBehavior.Cascade),
+                join =>
+                {
+                    join.ToTable("TaskDependencies");
+                    join.HasKey("TaskId", "DependencyId");
+                    join.HasIndex("DependencyId");
+                });
+        builder.Navigation("_dependencies")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
         builder.Ignore(task => task.DependencyIds);
         builder.Ignore(task => task.HasIncompleteDependencies);
         builder.Ignore(task => task.IsBlocked);
