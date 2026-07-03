@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using TodoApp.Api;
 using TodoApp.Api.Endpoints;
@@ -9,6 +10,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(
+        new JsonStringEnumConverter()));
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<TodoAppDbContext>("database");
 builder.Services.AddApplicationUseCases();
@@ -37,6 +41,7 @@ app.MapGet("/", () => Results.Redirect("/openapi/v1.json"))
 app.MapHealthChecks("/health/live");
 app.MapHealthChecks("/health/ready");
 app.MapProjectEndpoints();
+app.MapTaskEndpoints();
 
 app.Run();
 
