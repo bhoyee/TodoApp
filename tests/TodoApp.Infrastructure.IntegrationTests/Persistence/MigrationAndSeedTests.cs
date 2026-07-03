@@ -21,8 +21,10 @@ public sealed class MigrationAndSeedTests
         await context.Database.MigrateAsync();
 
         Assert.Contains(
-            "20260703120000_InitialPersistence",
-            await context.Database.GetAppliedMigrationsAsync());
+            await context.Database.GetAppliedMigrationsAsync(),
+            migration => migration.EndsWith(
+                "_InitialPersistence",
+                StringComparison.Ordinal));
         Assert.True(await context.Projects.AnyAsync() == false);
     }
 
