@@ -81,6 +81,102 @@ public sealed class MappingTests
         Assert.Equal(14.5m, reloaded.Priority.Value);
     }
 
+    [Fact]
+    public async Task TaskDependency_RoundTrip_PreservesDependencyGraph()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var project = Project.Create(Guid.NewGuid(), "Portfolio launch");
+        var dependency = TaskItem.Create(
+            Guid.NewGuid(),
+            project.Id,
+            "Complete security review");
+        var task = TaskItem.Create(
+            Guid.NewGuid(),
+            project.Id,
+            "Publish case study");
+        task.AddDependency(dependency);
+
+        await using (var writeContext = database.CreateContext())
+        {
+            writeContext.AddRange(project, dependency, task);
+            await writeContext.SaveChangesAsync();
+        }
+
+        await using var readContext = database.CreateContext();
+        var reloaded = await readContext.Tasks
+            .Include("_dependencies")
+            .AsNoTracking()
+            .SingleAsync(item => item.Id == task.Id);
+
+        Assert.Contains(dependency.Id, reloaded.DependencyIds);
+        Assert.True(reloaded.HasIncompleteDependencies);
+    }
+
+    [Fact]
+    public async Task SaveChanges_WhenLifecycleEventsExist_PersistsActivityHistory()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var project = Project.Create(Guid.NewGuid(), "Portfolio launch");
+        var task = TaskItem.Create(
+            Guid.NewGuid(),
+            project.Id,
+            "Publish case study");
+        task.MoveToReady();
+        task.Start();
+
+        await using (var writeContext = database.CreateContext())
+        {
+            writeContext.AddRange(project, task);
+            await writeContext.SaveChangesAsync();
+        }
+
+        await using var readContext = database.CreateContext();
+        var activities = await readContext.TaskActivities
+            .AsNoTracking()
+            .OrderBy(activity => activity.Sequence)
+            .ToArrayAsync();
+
+        Assert.Collection(
+            activities,
+            activity =>
+            {
+                Assert.Equal(task.Id, activity.TaskId);
+                Assert.Equal("StatusChanged", activity.ActivityType);
+                Assert.Equal("Backlog", activity.PreviousValue);
+                Assert.Equal("Ready", activity.CurrentValue);
+            },
+            activity =>
+            {
+                Assert.Equal("Ready", activity.PreviousValue);
+                Assert.Equal("InProgress", activity.CurrentValue);
+            });
+        Assert.Empty(task.DomainEvents);
+    }
+
+    [Fact]
+    public async Task DeleteProject_WhenTasksExist_IsRejected()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var project = Project.Create(Guid.NewGuid(), "Portfolio launch");
+        var task = TaskItem.Create(
+            Guid.NewGuid(),
+            project.Id,
+            "Publish case study");
+
+        await using (var writeContext = database.CreateContext())
+        {
+            writeContext.AddRange(project, task);
+            await writeContext.SaveChangesAsync();
+        }
+
+        await using var deleteContext = database.CreateContext();
+        deleteContext.Projects.Remove(
+            await deleteContext.Projects.SingleAsync());
+
+        await Assert.ThrowsAsync<DbUpdateException>(
+            () => deleteContext.SaveChangesAsync());
+    }
+
     private sealed class TestDatabase(
         SqliteConnection connection,
         DbContextOptions<TodoAppDbContext> options)
