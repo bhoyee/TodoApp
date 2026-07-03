@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TodoApp.Api;
+using TodoApp.Api.Endpoints;
 using TodoApp.Infrastructure;
 using TodoApp.Infrastructure.Persistence;
 using TodoApp.Infrastructure.Persistence.Seeding;
@@ -35,6 +36,7 @@ app.MapGet("/", () => Results.Redirect("/openapi/v1.json"))
     .ExcludeFromDescription();
 app.MapHealthChecks("/health/live");
 app.MapHealthChecks("/health/ready");
+app.MapProjectEndpoints();
 
 app.Run();
 
