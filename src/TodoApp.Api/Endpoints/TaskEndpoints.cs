@@ -92,7 +92,7 @@ internal static class TaskEndpoints
         TaskItemStatus? status,
         bool? isBlocked,
         string? search,
-        TaskSortBy sortBy,
+        TaskSortBy? sortBy,
         int pageNumber,
         int pageSize,
         SearchTasksHandler handler,
@@ -103,7 +103,7 @@ internal static class TaskEndpoints
                 status,
                 isBlocked,
                 search,
-                sortBy,
+                sortBy ?? TaskSortBy.PriorityDescending,
                 pageNumber == 0 ? 1 : pageNumber,
                 pageSize == 0 ? 20 : pageSize),
             cancellationToken));
