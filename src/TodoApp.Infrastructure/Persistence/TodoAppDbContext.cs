@@ -31,6 +31,9 @@ public sealed class TodoAppDbContext(
     public override async Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default)
     {
+        SetConcurrencyTokens<Project>();
+        SetConcurrencyTokens<TaskItem>();
+
         var tasksWithEvents = ChangeTracker
             .Entries<TaskItem>()
             .Select(entry => entry.Entity)
@@ -61,5 +64,18 @@ public sealed class TodoAppDbContext(
         }
 
         return result;
+    }
+
+    private void SetConcurrencyTokens<TEntity>()
+        where TEntity : class
+    {
+        foreach (var entry in ChangeTracker.Entries<TEntity>())
+        {
+            if (entry.State is EntityState.Added or EntityState.Modified)
+            {
+                entry.Property("ConcurrencyToken").CurrentValue =
+                    Guid.NewGuid();
+            }
+        }
     }
 }

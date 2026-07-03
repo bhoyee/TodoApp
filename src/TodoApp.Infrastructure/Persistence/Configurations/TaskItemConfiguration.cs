@@ -22,6 +22,8 @@ internal sealed class TaskItemConfiguration
         builder.Property(task => task.BlockedReason)
             .HasMaxLength(1000);
         builder.Property(task => task.CompletedAt);
+        builder.Property<Guid>("ConcurrencyToken")
+            .IsConcurrencyToken();
         builder.Property(task => task.DueDate)
             .HasConversion(
                 dueDate => dueDate == null

@@ -26,6 +26,8 @@ internal sealed class ProjectConfiguration
                     ? null
                     : DueDate.Create(value.Value));
         builder.Property(project => project.ArchivedAt);
+        builder.Property<Guid>("ConcurrencyToken")
+            .IsConcurrencyToken();
         builder.Ignore(project => project.IsArchived);
         builder.HasIndex(project => project.Name);
     }
