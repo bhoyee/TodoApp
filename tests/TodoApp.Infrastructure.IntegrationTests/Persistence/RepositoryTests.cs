@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using TodoApp.Application.Abstractions;
 using TodoApp.Application.Tasks.Queries;
 using TodoApp.Domain.Projects;
 using TodoApp.Domain.Tasks;
@@ -126,6 +127,82 @@ public sealed class RepositoryTests
         Assert.Equal(0, await readContext.Projects.CountAsync());
     }
 
+    [Fact]
+    public async Task SaveChanges_WhenAggregateWasUpdatedConcurrently_Throws()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var project = Project.Create(Guid.NewGuid(), "Portfolio launch");
+        var task = TaskItem.Create(
+            Guid.NewGuid(),
+            project.Id,
+            "Publish case study");
+
+        await using (var seedContext = database.CreateContext())
+        {
+            seedContext.AddRange(project, task);
+            await seedContext.SaveChangesAsync();
+        }
+
+        await using var firstContext = database.CreateContext();
+        await using var secondContext = database.CreateContext();
+        var first = await firstContext.Tasks.SingleAsync();
+        var second = await secondContext.Tasks.SingleAsync();
+        first.Rename("Publish architecture case study");
+        second.Rename("Publish delivery case study");
+
+        await firstContext.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(
+            () => secondContext.SaveChangesAsync());
+    }
+
+    [Fact]
+    public async Task ProjectBoardReader_ReturnsStatusRiskAndBlockerSummary()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var today = new DateOnly(2026, 7, 3);
+        var project = Project.Create(Guid.NewGuid(), "Portfolio launch");
+        var backlog = TaskItem.Create(
+            Guid.NewGuid(),
+            project.Id,
+            "Write release notes");
+        backlog.Schedule(DueDate.Create(today.AddDays(-1)));
+        var blocked = CreateReadyTask(
+            project.Id,
+            "Resolve launch blocker",
+            PlanningFactors.Create(5, 5, 5, 2));
+        blocked.Start();
+        blocked.Block("Waiting for approval");
+        var completed = CreateReadyTask(
+            project.Id,
+            "Complete architecture",
+            PlanningFactors.Create(3, 3, 3, 3));
+        completed.Start();
+        completed.Complete(DateTimeOffset.UtcNow);
+
+        await using (var seedContext = database.CreateContext())
+        {
+            seedContext.AddRange(project, backlog, blocked, completed);
+            await seedContext.SaveChangesAsync();
+        }
+
+        await using var queryContext = database.CreateContext();
+        var reader = new ProjectBoardReadRepository(
+            queryContext,
+            new StubClock(
+                new DateTimeOffset(2026, 7, 3, 12, 0, 0, TimeSpan.Zero)));
+
+        var result = await reader.GetAsync(
+            project.Id,
+            CancellationToken.None);
+
+        Assert.Equal(1, result.BacklogCount);
+        Assert.Equal(1, result.BlockedCount);
+        Assert.Equal(1, result.CompletedCount);
+        Assert.Equal(1, result.OverdueCount);
+        Assert.Single(result.HighPriorityBlockedTasks);
+    }
+
     private static TaskItem CreateReadyTask(
         Guid projectId,
         string title,
@@ -158,5 +235,10 @@ public sealed class RepositoryTests
         public TodoAppDbContext CreateContext() => new(options);
 
         public ValueTask DisposeAsync() => connection.DisposeAsync();
+    }
+
+    private sealed class StubClock(DateTimeOffset utcNow) : IClock
+    {
+        public DateTimeOffset UtcNow => utcNow;
     }
 }
