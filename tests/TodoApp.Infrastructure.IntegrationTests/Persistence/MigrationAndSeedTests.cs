@@ -19,6 +19,7 @@ public sealed class MigrationAndSeedTests
         await using var context = new TodoAppDbContext(options);
 
         await context.Database.MigrateAsync();
+        await context.Database.MigrateAsync();
 
         Assert.Contains(
             await context.Database.GetAppliedMigrationsAsync(),
@@ -26,6 +27,38 @@ public sealed class MigrationAndSeedTests
                 "_InitialPersistence",
                 StringComparison.Ordinal));
         Assert.True(await context.Projects.AnyAsync() == false);
+    }
+
+    [Fact]
+    public async Task FileDatabase_AfterContextRestart_PreservesData()
+    {
+        var databasePath = Path.Combine(
+            Path.GetTempPath(),
+            $"todoapp-{Guid.NewGuid():N}.db");
+
+        try
+        {
+            var options = new DbContextOptionsBuilder<TodoAppDbContext>()
+                .UseSqlite(
+                    $"Data Source={databasePath};Pooling=False")
+                .Options;
+
+            await using (var writeContext = new TodoAppDbContext(options))
+            {
+                await writeContext.Database.MigrateAsync();
+                await DevelopmentDataSeeder.SeedAsync(
+                    writeContext,
+                    CancellationToken.None);
+            }
+
+            await using var readContext = new TodoAppDbContext(options);
+            Assert.Equal(1, await readContext.Projects.CountAsync());
+            Assert.Equal(3, await readContext.Tasks.CountAsync());
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
     }
 
     [Fact]
